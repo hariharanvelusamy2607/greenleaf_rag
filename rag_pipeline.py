@@ -26,10 +26,17 @@ if not PINECONE_API_KEY:
 if not PINECONE_INDEX_HOST:
     raise RuntimeError("PINECONE_INDEX_HOST is not set. Provide the index host from Pinecone console.")
 
-hf_client = InferenceClient(provider="hf-inference", api_key=HF_TOKEN)
+hf_client = InferenceClient(token=HF_TOKEN)
 pinecone = Pinecone(api_key=PINECONE_API_KEY)
 pinecone_index = pinecone.Index(name=PINECONE_INDEX_NAME, host=PINECONE_INDEX_HOST)
-chat_client = OpenAI(base_url="https://router.huggingface.co/v1", api_key=HF_TOKEN)
+
+def get_chat_client():
+    """Lazy initialization of OpenAI client for Hugging Face inference."""
+    return OpenAI(
+        base_url="https://router.huggingface.co/v1",
+        api_key=HF_TOKEN,
+        default_headers={"x-use-cache": "false"}
+    )
 
 
 def split_into_h1_chunks(text: str) -> List[Tuple[str, str]]:
@@ -137,6 +144,7 @@ Question:
 {question}
 """
 
+    chat_client = get_chat_client()
     completion = chat_client.chat.completions.create(
         model=GEN_MODEL,
         messages=[

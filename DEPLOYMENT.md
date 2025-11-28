@@ -41,6 +41,26 @@ uvicorn main:app --reload
 - `python test.py` ingests the sample Project Greenleaf markdown into Pinecone.
 - `python runtime.py` runs a sample query via the shared pipeline.
 
+## One-Time Migration: ChromaDB → Pinecone
+
+If you have existing embeddings in ChromaDB that you want to migrate to Pinecone (one-time only):
+
+1. Set environment variables:
+   ```bash
+   export PINECONE_API_KEY="your_pinecone_api_key"
+   export PINECONE_INDEX="greenleaf-rag"
+   export PINECONE_INDEX_HOST="your-index-host.svc.us-east-1-aws.pinecone.io"
+   ```
+
+2. Run the migration script **once** (this is a standalone utility, not part of the deployed app):
+   ```bash
+   python3 migrate_to_pinecone.py
+   ```
+
+   This script reads all embeddings from your local `chroma_db/` directory and uploads them to Pinecone. It will not run automatically when you deploy the app.
+
+3. After migration, you can delete the local `chroma_db/` directory if desired (it's already in `.gitignore`).
+
 ## Deploy to Render
 
 ### Step 1: Push to GitHub
