@@ -6,7 +6,6 @@ from datetime import datetime
 from typing import Dict, List, Optional, Tuple
 
 from huggingface_hub import InferenceClient
-from openai import OpenAI
 from pinecone import Pinecone
 
 logging.basicConfig(level=logging.INFO, format="%(levelname)s %(message)s")
@@ -30,13 +29,7 @@ hf_client = InferenceClient(token=HF_TOKEN)
 pinecone = Pinecone(api_key=PINECONE_API_KEY)
 pinecone_index = pinecone.Index(name=PINECONE_INDEX_NAME, host=PINECONE_INDEX_HOST)
 
-def get_chat_client():
-    """Lazy initialization of OpenAI client for Hugging Face inference."""
-    return OpenAI(
-        base_url="https://router.huggingface.co/v1",
-        api_key=HF_TOKEN,
-        default_headers={"x-use-cache": "false"}
-    )
+# Using Hugging Face InferenceClient directly instead of OpenAI client to avoid httpx compatibility issues
 
 
 def split_into_h1_chunks(text: str) -> List[Tuple[str, str]]:
@@ -144,16 +137,20 @@ Question:
 {question}
 """
 
-    chat_client = get_chat_client()
-    completion = chat_client.chat.completions.create(
+    # Use Hugging Face Inference API directly for chat completion
+    messages = [
+        {"role": "system", "content": "Answer concisely using the supplied context."},
+        {"role": "user", "content": assistant_prompt},
+    ]
+    
+    response = hf_client.chat_completion(
+        messages=messages,
         model=GEN_MODEL,
-        messages=[
-            {"role": "system", "content": "Answer concisely using the supplied context."},
-            {"role": "user", "content": assistant_prompt},
-        ],
+        max_tokens=512,
+        temperature=0.7,
     )
-
-    message = completion.choices[0].message
+    
+    answer = response.choices[0].message.content
     logging.info("Generated answer for question '%s'", question)
-    return {"answer": message.content, "context": context_text, "matches": matches}
+    return {"answer": answer, "context": context_text, "matches": matches}
 
